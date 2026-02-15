@@ -4,98 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>4Fog Cinema Rooms</title>
-    
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    
     <style>
         * { box-sizing: border-box; }
         body { 
-            background-color: #121212; 
-            color: white; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; padding: 0; 
-            height: 100vh;
-            display: flex; flex-direction: column; overflow: hidden; 
+            background-color: #121212; color: white; font-family: 'Segoe UI', sans-serif; 
+            margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; 
         }
-
-        /* 1. ШАПКА */
         .header-bar {
             width: 100%; height: 35px; background: #1a1a1a; border-bottom: 1px solid #333; 
-            display: flex; align-items: center; padding: 0 10px; 
-            position: fixed; top: 0; left: 0; z-index: 2000;
+            display: flex; align-items: center; padding: 0 10px; position: fixed; top: 0; left: 0; z-index: 2000;
         }
-
-        /* 2. ОСНОВНА ЗОНА */
         .main-scroll-area {
             flex-grow: 1; width: 100%; max-width: 800px; margin: 0 auto;
             padding-top: 45px; padding-bottom: 10px; padding-left: 10px; padding-right: 10px;
             overflow-y: auto; display: flex; flex-direction: column;
         }
-
-        /* ПАНЕЛІ */
         .room-panel {
             background: #1E1E1E; padding: 10px 15px; border-radius: 12px; margin-bottom: 8px;
             display: flex; justify-content: space-between; align-items: center; border: 1px solid #333;
         }
         .room-label { font-size: 10px; color: #888; text-transform: uppercase; }
         #roomName { color: #BB86FC; font-weight: bold; font-size: 16px; }
-
-        /* КНОПКИ */
         button { cursor: pointer; border: none; font-weight: bold; border-radius: 6px; padding: 8px 12px; transition: 0.2s; }
         .btn-copy { background: #333; color: #fff; }
         .btn-new { background: #333; color: #fff; border: 1px solid #555; }
         .btn-load { background: #BB86FC; color: #000; }
-        
-        /* КНОПКА ПУЛЬТА */
         .btn-remote { 
-            width: 100%; margin-bottom: 8px; padding: 10px; 
-            background: #333; color: #888; border: 1px dashed #555;
+            width: 100%; margin-bottom: 8px; padding: 10px; background: #333; color: #888; border: 1px dashed #555;
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         .btn-remote.active {
-            background: #03DAC6; color: #000; border: 1px solid #03DAC6;
-            box-shadow: 0 0 10px rgba(3, 218, 198, 0.3);
+            background: #03DAC6; color: #000; border: 1px solid #03DAC6; box-shadow: 0 0 10px rgba(3, 218, 198, 0.3);
         }
-
-        /* ЕЛЕМЕНТИ КЕРУВАННЯ */
         .controls { width: 100%; margin-bottom: 8px; display: flex; gap: 5px; transition: opacity 0.3s; }
         .controls.disabled { opacity: 0.5; pointer-events: none; }
-        
         input.url-input { flex-grow: 1; padding: 12px; border-radius: 8px; border: none; background: #252525; color: white; border: 1px solid #333; }
-
         #toggleBtn {
             width: 100%; background: #BB86FC !important; color: #000 !important;
             padding: 12px; font-size: 13px; font-weight: bold; border-radius: 0 0 12px 12px;
             margin-bottom: 15px; text-transform: uppercase; box-shadow: 0 4px 10px rgba(187,134,252,0.2);
         }
-
         video { width: 100%; border-radius: 10px; background: #000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); display: block; }
-
-        /* СПИСОК ЮЗЕРІВ */
         .online-box {
-            background: #1E1E1E; border: 1px solid #333; border-radius: 10px 10px 0 0; 
-            margin-top: 15px; overflow: hidden; cursor: pointer; flex-shrink: 0;
+            background: #1E1E1E; border: 1px solid #333; border-radius: 10px 10px 0 0; margin-top: 15px; overflow: hidden; cursor: pointer; flex-shrink: 0;
         }
         .online-header { padding: 10px; display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; color: #03DAC6; }
         #userList { display: none; padding: 10px; border-top: 1px solid #333; font-size: 12px; color: #bbb; background: #181818; }
         .user-tag { display: inline-block; background: #252525; padding: 4px 10px; border-radius: 15px; margin: 3px; border: 1px solid #444; color: #eee; }
-
-        /* ЧАТ */
         #chat-container {
             display: flex; flex-direction: column; background: #1E1E1E; border-radius: 0 0 12px 12px; 
             border: 1px solid #333; border-top: none; height: 300px; min-height: 200px; flex-shrink: 0; 
         }
         #messages { flex-grow: 1; padding: 12px; overflow-y: auto; text-align: left; }
         .msg { margin-bottom: 12px; font-size: 14px; word-wrap: break-word; }
-        
         .sticker-panel {
             display: none; background: #252525; padding: 10px; border-top: 1px solid #333;
             grid-template-columns: repeat(5, 1fr); gap: 10px; max-height: 150px; overflow-y: auto;
         }
         .sticker-option { width: 100%; cursor: pointer; transition: 0.2s; }
         .sticker-option:hover { transform: scale(1.15); }
-
         .input-area { display: flex; padding: 10px; background: #252525; gap: 8px; border-top: 1px solid #333; align-items: center; }
         #msgInput { flex-grow: 1; padding: 12px; border-radius: 8px; border: none; background: #333; color: white; }
         .btn-sticker { background: #333; color: white; font-size: 18px; border: 1px solid #444; padding: 8px 12px; border-radius: 6px; }
@@ -103,7 +72,6 @@
     </style>
 </head>
 <body>
-
     <div class="header-bar">
         <img src="stiker/tinifIed (2)/IMG_20260208_183334.png" style="height: 20px; margin-right: 10px;" onerror="this.style.display='none'">
         <span style="font-size: 11px; font-weight: bold; color: #BB86FC; letter-spacing: 1px;">КІМНАТА ГОТОВА</span>
@@ -111,7 +79,6 @@
     </div>
 
     <div class="main-scroll-area">
-        
         <div id="topMenu">
             <div class="room-panel">
                 <div style="display: flex; flex-direction: column;">
@@ -123,29 +90,20 @@
                     <button class="btn-new" onclick="createNewRoom()">➕ Нова</button>
                 </div>
             </div>
-
             <button id="remoteBtn" class="btn-remote" onclick="claimRemote()">
                 <span>📡</span> <span>Взяти пульт керування</span>
             </button>
-
             <div class="controls" id="videoControls">
                 <input type="text" class="url-input" id="videoUrl" placeholder="Посилання (.mp4 / .m3u8)...">
                 <button class="btn-load" onclick="changeVideo()">▶ PLAY</button>
             </div>
         </div> 
-
         <button id="toggleBtn" onclick="toggleMenu()">🔼 Згорнути налаштування</button>
-
         <video id="myVideo" controls playsinline webkit-playsinline preload="auto"></video>
-
         <div class="online-box" onclick="toggleUserList()">
-            <div class="online-header">
-                <span>👥 Присутні</span>
-                <span id="userCount">Онлайн: 1</span>
-            </div>
+            <div class="online-header"><span>👥 Присутні</span><span id="userCount">Онлайн: 1</span></div>
             <div id="userList"></div>
         </div>
-
         <div id="chat-container">
             <div id="messages"></div>
             <div id="stickerPanel" class="sticker-panel">
@@ -162,22 +120,14 @@
                 <button class="btn-send" onclick="sendMessage()">➤</button>
             </div>
         </div>
-
         <div style="height: 20px;"></div>
     </div>
 
     <script>
         const SERVER_URL = 'https://cinema-server-cz03.onrender.com'; 
-        
-        // --- 1. ПІДКЛЮЧЕННЯ (WEBSOCKET) ---
-        const socket = io(SERVER_URL, {
-            transports: ['websocket'], 
-            upgrade: false
-        });
-
+        const socket = io(SERVER_URL, { transports: ['websocket'], upgrade: false });
         const video = document.getElementById('myVideo');
         
-        // --- ЛОГІКА КІМНАТ ---
         const urlParams = new URLSearchParams(window.location.search);
         let roomId = urlParams.get('room') || 'room-' + Math.floor(Math.random() * 9999);
         if (!urlParams.get('room')) window.history.pushState({}, '', '?room=' + roomId);
@@ -186,22 +136,18 @@
         let myName = localStorage.getItem('username') || prompt("Як тебе звати?", "Козак") || "Анонім";
         localStorage.setItem('username', myName);
 
-        // --- HLS (LOW LATENCY) ---
         const hlsConfig = { enableWorker: true, lowLatencyMode: true };
         let hls = new Hls(hlsConfig);
         
-        // --- ЗМІННІ СТАНУ ---
-        let isSyncing = false;     // Ми зараз отримуємо команду від сервера?
-        let isProtecting = false;  // ЗАПОБІЖНИК: чи виправляємо ми зараз помилку юзера?
+        let isSyncing = false;
+        let isProtecting = false;
         let currentLeaderId = null;
         let lastKnownTime = 0;
 
-        // --- UI ФУНКЦІЇ ---
         function updateRemoteUI() {
             const btn = document.getElementById('remoteBtn');
             const controls = document.getElementById('videoControls');
             const isLeader = (socket.id === currentLeaderId);
-
             if (isLeader) {
                 btn.classList.add('active');
                 btn.innerHTML = `<span>🎮</span> <span>ПУЛЬТ У ВАС (Ви керуєте)</span>`;
@@ -222,164 +168,90 @@
             updateRemoteUI();
         });
 
-        // --- ЗАПУСК ВІДЕО ---
+        // !!! СЛУХАЧ ДЛЯ ПЕРЕЗАВАНТАЖЕННЯ !!!
+        socket.on('force_reload', () => {
+            console.log("Leader changed, forcing reload for sync...");
+            window.location.reload();
+        });
+
         function changeVideo(urlFromSocket = null) {
             let url = urlFromSocket || document.getElementById('videoUrl').value;
             if (!url) return;
-            
             if (!urlFromSocket && socket.id !== currentLeaderId) {
                 alert("⛔ Тільки власник пульта може міняти відео!");
                 return;
             }
-
-            // Fix посилань
             if (url.includes('dropbox.com')) url = url.replace('dl=0', 'dl=1');
             if (url.includes('drive.google.com') && url.includes('/d/')) {
                 const id = url.match(/\/d\/(.+?)\//);
                 if(id) url = `https://drive.google.com/uc?export=download&id=${id[1]}`;
             }
-
             if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
-                    if(hls) hls.destroy(); 
-                    hls = new Hls(hlsConfig);
-                    hls.loadSource(url); 
-                    hls.attachMedia(video);
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) { 
-                    video.src = url; 
-                }
+                    if(hls) hls.destroy(); hls = new Hls(hlsConfig);
+                    hls.loadSource(url); hls.attachMedia(video);
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) { video.src = url; }
             } else { video.src = url; }
-
             if (!urlFromSocket) socket.emit('change_video', url);
         }
 
         socket.on('connect', () => socket.emit('join_room', { roomId, userName: myName }));
-        
         socket.on('update_user_list', (users) => {
             document.getElementById('userCount').innerText = `Онлайн: ${users.length}`;
             document.getElementById('userList').innerHTML = users.map(u => `<span class="user-tag">● ${u}</span>`).join('');
         });
-
-        // --- ВІДНОВЛЕННЯ СТАНУ (ПАМ'ЯТЬ) ---
         socket.on('initial_state', (data) => {
             if (data.messages) data.messages.forEach(msg => displayMessage(msg));
-            if (data.leaderId) {
-                currentLeaderId = data.leaderId;
-                updateRemoteUI();
-            }
+            if (data.leaderId) { currentLeaderId = data.leaderId; updateRemoteUI(); }
             if (data.videoUrl) {
                 document.getElementById('videoUrl').value = data.videoUrl;
                 changeVideo(data.videoUrl);
-                
-                // Слухаємо завантаження і відновлюємо час
                 video.addEventListener('loadedmetadata', function restoreState() {
-                    if (data.currentTime) {
-                        video.currentTime = data.currentTime;
-                        lastKnownTime = data.currentTime;
-                    }
+                    if (data.currentTime) { video.currentTime = data.currentTime; lastKnownTime = data.currentTime; }
                     if (data.isPlaying) video.play().catch(e => console.log("Auto-play blocked"));
                     video.removeEventListener('loadedmetadata', restoreState);
                 });
             }
         });
-
         socket.on('update_video_url', (url) => changeVideo(url));
-
-
-        // --- БЕЗПЕЧНА СИНХРОНІЗАЦІЯ (ANTI-CRASH) ---
 
         function sendSync(action) {
             if (socket.id === currentLeaderId && !isSyncing) {
-                socket.emit('sync_action', { 
-                    action: action, 
-                    time: video.currentTime, 
-                    paused: video.paused 
-                });
+                socket.emit('sync_action', { action: action, time: video.currentTime, paused: video.paused });
             }
         }
 
-        // 1. БЛОКУВАННЯ ПЛЕЙ
         video.onplay = () => {
-            // Якщо це сервер нас запустив - ок
             if (isSyncing) return;
-
-            // Якщо спрацював запобіжник - знімаємо його і виходимо
-            if (isProtecting) {
-                isProtecting = false;
-                return;
-            }
-
-            // Якщо ми не лідер - блокуємо
-            if (socket.id !== currentLeaderId) {
-                isProtecting = true; // Ставимо щит
-                video.pause();       // Викликаємо pause (який викличе onpause)
-                return;
-            }
+            if (isProtecting) { isProtecting = false; return; }
+            if (socket.id !== currentLeaderId) { isProtecting = true; video.pause(); return; }
             sendSync('play');
         };
-
-        // 2. БЛОКУВАННЯ ПАУЗИ
         video.onpause = () => {
             if (isSyncing) return;
-
-            if (isProtecting) {
-                isProtecting = false;
-                return;
-            }
-
-            if (socket.id !== currentLeaderId) {
-                isProtecting = true; // Ставимо щит
-                video.play();        // Викликаємо play (який викличе onplay)
-                return;
-            }
+            if (isProtecting) { isProtecting = false; return; }
+            if (socket.id !== currentLeaderId) { isProtecting = true; video.play(); return; }
             sendSync('pause');
         };
-
-        // 3. БЛОКУВАННЯ ПЕРЕМОТКИ
         video.onseeking = () => { 
             if (isSyncing) return;
-            
             if (socket.id !== currentLeaderId) {
                 const diff = Math.abs(video.currentTime - lastKnownTime);
-                if (diff > 2) { 
-                    video.currentTime = lastKnownTime; 
-                    return;
-                }
+                if (diff > 2) { video.currentTime = lastKnownTime; return; }
             }
         };
+        video.onseeked = () => { if (socket.id === currentLeaderId) sendSync('seek'); };
 
-        video.onseeked = () => {
-            if (socket.id === currentLeaderId) sendSync('seek');
-        };
-
-        // ПРИЙОМ ДАНИХ
         socket.on('receive_sync', (data) => {
-            isSyncing = true; 
-            lastKnownTime = data.time; 
-
-            // Синхронізація (0.3 сек)
-            if (Math.abs(video.currentTime - data.time) > 0.3) {
-                video.currentTime = data.time;
-            }
-
-            if (data.action === 'play') {
-                video.play().catch(e => {});
-            } else if (data.action === 'pause') {
-                video.pause();
-            } else if (data.action === 'seek') {
-                if (data.paused) video.pause();
-                else video.play();
-            }
-
+            isSyncing = true; lastKnownTime = data.time; 
+            if (Math.abs(video.currentTime - data.time) > 0.3) { video.currentTime = data.time; }
+            if (data.action === 'play') { video.play().catch(e => {}); } 
+            else if (data.action === 'pause') { video.pause(); } 
+            else if (data.action === 'seek') { if (data.paused) video.pause(); else video.play(); }
             setTimeout(() => { isSyncing = false; }, 400);
         });
+        setInterval(() => { if (!video.paused) lastKnownTime = video.currentTime; }, 1000);
 
-        // Оновлюємо "дозволений час"
-        setInterval(() => {
-            if (!video.paused) lastKnownTime = video.currentTime;
-        }, 1000);
-
-        // --- ЧАТ ---
         function sendMessage() {
             const input = document.getElementById('msgInput');
             if (input.value.trim()) {
@@ -392,7 +264,6 @@
             toggleStickers();
         }
         socket.on('receive_message', (data) => displayMessage(data));
-
         function displayMessage(data) {
             const div = document.createElement('div');
             div.className = 'msg';
@@ -400,26 +271,16 @@
             let userStyle = "color:#BB86FC";
             if(data.user === 'СИСТЕМА') userStyle = "color:#03DAC6; font-weight:900";
             div.innerHTML = `<strong style="${userStyle}">${data.user}:</strong> ${content} <span style="font-size:10px;color:grey;float:right">${data.time}</span>`;
-            const m = document.getElementById('messages');
-            m.appendChild(div);
-            m.scrollTop = m.scrollHeight;
+            const m = document.getElementById('messages'); m.appendChild(div); m.scrollTop = m.scrollHeight;
         }
 
-        // UI HELPERS
         function toggleMenu() {
-            const m = document.getElementById('topMenu');
-            const b = document.getElementById('toggleBtn');
+            const m = document.getElementById('topMenu'); const b = document.getElementById('toggleBtn');
             m.style.display = (m.style.display === 'none') ? 'block' : 'none';
             b.innerText = (m.style.display === 'none') ? '⚙️ Відкрити меню' : '🔼 Згорнути налаштування';
         }
-        function toggleUserList() {
-            const l = document.getElementById('userList');
-            l.style.display = (l.style.display === 'block') ? 'none' : 'block';
-        }
-        function toggleStickers() {
-            const p = document.getElementById('stickerPanel');
-            p.style.display = (p.style.display === 'grid') ? 'none' : 'grid';
-        }
+        function toggleUserList() { const l = document.getElementById('userList'); l.style.display = (l.style.display === 'block') ? 'none' : 'block'; }
+        function toggleStickers() { const p = document.getElementById('stickerPanel'); p.style.display = (p.style.display === 'grid') ? 'none' : 'grid'; }
         function copyLink() { navigator.clipboard.writeText(window.location.href); alert("Скопійовано!"); }
         function createNewRoom() { if(confirm("Створити нову кімнату?")) window.location.search = '?room=room-' + Math.floor(Math.random() * 9999); }
     </script>
