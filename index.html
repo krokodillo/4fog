@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>4Fog Cinema Rooms</title>
+    
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     
@@ -25,7 +26,7 @@
             position: fixed; top: 0; left: 0; z-index: 2000;
         }
 
-        /* 2. ОСНОВНА ЗОНА (СКРОЛ) */
+        /* 2. ОСНОВНА ЗОНА */
         .main-scroll-area {
             flex-grow: 1; width: 100%; max-width: 800px; margin: 0 auto;
             padding-top: 45px; padding-bottom: 10px; padding-left: 10px; padding-right: 10px;
@@ -57,7 +58,7 @@
             box-shadow: 0 0 10px rgba(3, 218, 198, 0.3);
         }
 
-        /* КОНТРОЛЕРИ */
+        /* ЕЛЕМЕНТИ КЕРУВАННЯ */
         .controls { width: 100%; margin-bottom: 8px; display: flex; gap: 5px; transition: opacity 0.3s; }
         .controls.disabled { opacity: 0.5; pointer-events: none; }
         
@@ -168,7 +169,7 @@
     <script>
         const SERVER_URL = 'https://cinema-server-cz03.onrender.com'; 
         
-        // 1. WebSocket транспорт для миттєвої реакції
+        // --- 1. ПІДКЛЮЧЕННЯ (WEBSOCKET) ---
         const socket = io(SERVER_URL, {
             transports: ['websocket'], 
             upgrade: false
@@ -176,6 +177,7 @@
 
         const video = document.getElementById('myVideo');
         
+        // --- ЛОГІКА КІМНАТ ---
         const urlParams = new URLSearchParams(window.location.search);
         let roomId = urlParams.get('room') || 'room-' + Math.floor(Math.random() * 9999);
         if (!urlParams.get('room')) window.history.pushState({}, '', '?room=' + roomId);
@@ -184,13 +186,15 @@
         let myName = localStorage.getItem('username') || prompt("Як тебе звати?", "Козак") || "Анонім";
         localStorage.setItem('username', myName);
 
-        // 2. Low Latency HLS (Швидкий буфер)
+        // --- HLS (LOW LATENCY) ---
         const hlsConfig = { enableWorker: true, lowLatencyMode: true };
         let hls = new Hls(hlsConfig);
         
-        let isSyncing = false;
+        // --- ЗМІННІ СТАНУ ---
+        let isSyncing = false;     // Ми зараз отримуємо команду від сервера?
+        let isProtecting = false;  // ЗАПОБІЖНИК: чи виправляємо ми зараз помилку юзера?
         let currentLeaderId = null;
-        let lastKnownTime = 0; // Пам'ять для блокування
+        let lastKnownTime = 0;
 
         // --- UI ФУНКЦІЇ ---
         function updateRemoteUI() {
@@ -223,13 +227,12 @@
             let url = urlFromSocket || document.getElementById('videoUrl').value;
             if (!url) return;
             
-            // Якщо не лідер намагається змінити через UI
             if (!urlFromSocket && socket.id !== currentLeaderId) {
                 alert("⛔ Тільки власник пульта може міняти відео!");
                 return;
             }
 
-            // Fix Dropbox/Drive links
+            // Fix посилань
             if (url.includes('dropbox.com')) url = url.replace('dl=0', 'dl=1');
             if (url.includes('drive.google.com') && url.includes('/d/')) {
                 const id = url.match(/\/d\/(.+?)\//);
@@ -268,7 +271,7 @@
                 document.getElementById('videoUrl').value = data.videoUrl;
                 changeVideo(data.videoUrl);
                 
-                // Чекаємо метадані і відновлюємо час
+                // Слухаємо завантаження і відновлюємо час
                 video.addEventListener('loadedmetadata', function restoreState() {
                     if (data.currentTime) {
                         video.currentTime = data.currentTime;
@@ -283,7 +286,7 @@
         socket.on('update_video_url', (url) => changeVideo(url));
 
 
-        // --- ЛОГІКА СИНХРОНІЗАЦІЇ + ОХОРОНА ---
+        // --- БЕЗПЕЧНА СИНХРОНІЗАЦІЯ (ANTI-CRASH) ---
 
         function sendSync(action) {
             if (socket.id === currentLeaderId && !isSyncing) {
@@ -295,30 +298,51 @@
             }
         }
 
-        // 1. Блокування ПЛЕЙ (якщо не лідер)
+        // 1. БЛОКУВАННЯ ПЛЕЙ
         video.onplay = () => {
-            if (socket.id !== currentLeaderId && !isSyncing) {
-                video.pause(); // Скасовуємо
+            // Якщо це сервер нас запустив - ок
+            if (isSyncing) return;
+
+            // Якщо спрацював запобіжник - знімаємо його і виходимо
+            if (isProtecting) {
+                isProtecting = false;
+                return;
+            }
+
+            // Якщо ми не лідер - блокуємо
+            if (socket.id !== currentLeaderId) {
+                isProtecting = true; // Ставимо щит
+                video.pause();       // Викликаємо pause (який викличе onpause)
                 return;
             }
             sendSync('play');
         };
 
-        // 2. Блокування ПАУЗИ (якщо не лідер)
+        // 2. БЛОКУВАННЯ ПАУЗИ
         video.onpause = () => {
-            if (socket.id !== currentLeaderId && !isSyncing) {
-                video.play(); // Скасовуємо
+            if (isSyncing) return;
+
+            if (isProtecting) {
+                isProtecting = false;
+                return;
+            }
+
+            if (socket.id !== currentLeaderId) {
+                isProtecting = true; // Ставимо щит
+                video.play();        // Викликаємо play (який викличе onplay)
                 return;
             }
             sendSync('pause');
         };
 
-        // 3. Блокування ПЕРЕМОТКИ (Seeking Guard)
+        // 3. БЛОКУВАННЯ ПЕРЕМОТКИ
         video.onseeking = () => { 
-            if (socket.id !== currentLeaderId && !isSyncing) {
+            if (isSyncing) return;
+            
+            if (socket.id !== currentLeaderId) {
                 const diff = Math.abs(video.currentTime - lastKnownTime);
-                if (diff > 2) { // Якщо перемотав більше ніж на 2 сек
-                    video.currentTime = lastKnownTime; // Повертаємо назад
+                if (diff > 2) { 
+                    video.currentTime = lastKnownTime; 
                     return;
                 }
             }
@@ -328,11 +352,12 @@
             if (socket.id === currentLeaderId) sendSync('seek');
         };
 
-        // Отримання команд
+        // ПРИЙОМ ДАНИХ
         socket.on('receive_sync', (data) => {
             isSyncing = true; 
-            lastKnownTime = data.time; // Оновлюємо дозволений час
+            lastKnownTime = data.time; 
 
+            // Синхронізація (0.3 сек)
             if (Math.abs(video.currentTime - data.time) > 0.3) {
                 video.currentTime = data.time;
             }
@@ -349,11 +374,10 @@
             setTimeout(() => { isSyncing = false; }, 400);
         });
 
-        // Оновлюємо lastKnownTime поки дивимось (щоб не кидало назад випадково)
+        // Оновлюємо "дозволений час"
         setInterval(() => {
             if (!video.paused) lastKnownTime = video.currentTime;
         }, 1000);
-
 
         // --- ЧАТ ---
         function sendMessage() {
