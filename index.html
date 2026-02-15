@@ -58,7 +58,6 @@
 
         /* Елементи керування */
         .controls { width: 100%; margin-bottom: 8px; display: flex; gap: 5px; transition: opacity 0.3s; }
-        /* Клас для відключення керування */
         .controls.disabled { opacity: 0.5; pointer-events: none; }
         
         input.url-input { flex-grow: 1; padding: 12px; border-radius: 8px; border: none; background: #252525; color: white; border: 1px solid #333; }
@@ -98,12 +97,6 @@
         #msgInput { flex-grow: 1; padding: 12px; border-radius: 8px; border: none; background: #333; color: white; }
         .btn-sticker { background: #333; color: white; font-size: 18px; border: 1px solid #444; padding: 8px 12px; border-radius: 6px; }
         .btn-send { background: #03DAC6; border: none; padding: 10px 18px; border-radius: 8px; color: #000; font-weight: bold; }
-        
-        /* Статус лідера */
-        .leader-badge { 
-            background: #FFD700; color: #000; padding: 2px 6px; border-radius: 4px; 
-            font-size: 10px; font-weight: bold; margin-left: 5px; 
-        }
     </style>
 </head>
 <body>
@@ -172,7 +165,13 @@
 
     <script>
         const SERVER_URL = 'https://cinema-server-cz03.onrender.com'; 
-        const socket = io(SERVER_URL);
+        
+        // 1. WebSocket для швидкості
+        const socket = io(SERVER_URL, {
+            transports: ['websocket'], 
+            upgrade: false
+        });
+
         const video = document.getElementById('myVideo');
         
         const urlParams = new URLSearchParams(window.location.search);
@@ -183,10 +182,11 @@
         let myName = localStorage.getItem('username') || prompt("Як тебе звати?", "Козак") || "Анонім";
         localStorage.setItem('username', myName);
 
-        let hls = new Hls();
-        let isSyncing = false;
+        // 2. Low Latency HLS
+        const hlsConfig = { enableWorker: true, lowLatencyMode: true };
+        let hls = new Hls(hlsConfig);
         
-        // --- ЛОГІКА ПУЛЬТА ---
+        let isSyncing = false;
         let currentLeaderId = null;
 
         function updateRemoteUI() {
@@ -197,32 +197,27 @@
             if (isLeader) {
                 btn.classList.add('active');
                 btn.innerHTML = `<span>🎮</span> <span>ПУЛЬТ У ВАС (Ви керуєте)</span>`;
-                controls.classList.remove('disabled'); // Вмикаємо ввід
+                controls.classList.remove('disabled');
                 document.getElementById('videoUrl').disabled = false;
             } else {
                 btn.classList.remove('active');
                 btn.innerHTML = `<span>📡</span> <span>Взяти пульт керування</span>`;
-                controls.classList.add('disabled'); // Вимикаємо ввід
+                controls.classList.add('disabled');
                 document.getElementById('videoUrl').disabled = true;
             }
         }
 
-        function claimRemote() {
-            socket.emit('claim_remote');
-        }
+        function claimRemote() { socket.emit('claim_remote'); }
 
         socket.on('update_leader', (leaderId) => {
             currentLeaderId = leaderId;
             updateRemoteUI();
         });
 
-
-        // --- ВІДЕО ФУНКЦІЇ ---
         function changeVideo(urlFromSocket = null) {
             let url = urlFromSocket || document.getElementById('videoUrl').value;
             if (!url) return;
             
-            // Якщо це ручний ввід і ти не лідер - заборонити
             if (!urlFromSocket && socket.id !== currentLeaderId) {
                 alert("Тільки власник пульта може міняти відео!");
                 return;
@@ -236,17 +231,18 @@
 
             if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
-                    hls.destroy(); hls = new Hls(); hls.loadSource(url); hls.attachMedia(video);
-                    hls.on(Hls.Events.MANIFEST_PARSED, function() { 
-                        // Автоплей тільки якщо команда прийшла від лідера
-                    });
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) { video.src = url; }
+                    if(hls) hls.destroy(); 
+                    hls = new Hls(hlsConfig);
+                    hls.loadSource(url); 
+                    hls.attachMedia(video);
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) { 
+                    video.src = url; 
+                }
             } else { video.src = url; }
 
             if (!urlFromSocket) socket.emit('change_video', url);
         }
 
-        // --- SOCKET ---
         socket.on('connect', () => socket.emit('join_room', { roomId, userName: myName }));
         
         socket.on('update_user_list', (users) => {
@@ -254,6 +250,7 @@
             document.getElementById('userList').innerHTML = users.map(u => `<span class="user-tag">● ${u}</span>`).join('');
         });
 
+        // 3. ГОЛОВНЕ: ВІДНОВЛЕННЯ ЧАСУ
         socket.on('initial_state', (data) => {
             if (data.messages) data.messages.forEach(msg => displayMessage(msg));
             if (data.leaderId) {
@@ -263,13 +260,18 @@
             if (data.videoUrl) {
                 document.getElementById('videoUrl').value = data.videoUrl;
                 changeVideo(data.videoUrl);
+                
+                // Якщо сервер знає час - перекидаємо туди
+                video.addEventListener('loadedmetadata', function restoreState() {
+                    if (data.currentTime) video.currentTime = data.currentTime;
+                    if (data.isPlaying) video.play().catch(e => console.log("Auto-play blocked"));
+                    video.removeEventListener('loadedmetadata', restoreState);
+                });
             }
         });
 
         socket.on('update_video_url', (url) => changeVideo(url));
 
-        // --- СИНХРОНІЗАЦІЯ (ТІЛЬКИ ЛІДЕР ВІДПРАВЛЯЄ) ---
-        
         function sendSync(action) {
             if (socket.id === currentLeaderId && !isSyncing) {
                 socket.emit('sync_action', { 
@@ -285,9 +287,9 @@
         video.onseeked = () => sendSync('seek');
 
         socket.on('receive_sync', (data) => {
-            isSyncing = true;
+            isSyncing = true; 
             
-            // Якщо ми відстали/поспішили більше ніж на 0.3 сек - рівняємось
+            // Затримка 0.3 сек
             if (Math.abs(video.currentTime - data.time) > 0.3) {
                 video.currentTime = data.time;
             }
@@ -298,13 +300,12 @@
                 video.pause();
             } else if (data.action === 'seek') {
                 if (data.paused) video.pause();
-                else video.play().catch(e => console.log("Seek play error:", e));
+                else video.play();
             }
 
-            setTimeout(() => { isSyncing = false; }, 600);
+            setTimeout(() => { isSyncing = false; }, 400);
         });
 
-        // --- ЧАТ ---
         function sendMessage() {
             const input = document.getElementById('msgInput');
             if (input.value.trim()) {
@@ -322,11 +323,8 @@
             const div = document.createElement('div');
             div.className = 'msg';
             let content = data.sticker ? `<img src="${data.sticker}" style="width:100px; border-radius:8px;">` : data.text;
-            
-            // Спеціальний стиль для СИСТЕМИ
             let userStyle = "color:#BB86FC";
             if(data.user === 'СИСТЕМА') userStyle = "color:#03DAC6; font-weight:900";
-
             div.innerHTML = `<strong style="${userStyle}">${data.user}:</strong> ${content} <span style="font-size:10px;color:grey;float:right">${data.time}</span>`;
             const m = document.getElementById('messages');
             m.appendChild(div);
