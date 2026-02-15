@@ -291,147 +291,6 @@
             if (Math.abs(video.currentTime - data.time) > 0.3) {
                 video.currentTime = data.time;
             }
-    <script>
-        const SERVER_URL = 'https://cinema-server-cz03.onrender.com'; 
-        
-        const socket = io(SERVER_URL, {
-            transports: ['websocket'], 
-            upgrade: false
-        });
-
-        const video = document.getElementById('myVideo');
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        let roomId = urlParams.get('room') || 'room-' + Math.floor(Math.random() * 9999);
-        if (!urlParams.get('room')) window.history.pushState({}, '', '?room=' + roomId);
-        document.getElementById('roomName').innerText = roomId;
-
-        let myName = localStorage.getItem('username') || prompt("Як тебе звати?", "Козак") || "Анонім";
-        localStorage.setItem('username', myName);
-
-        const hlsConfig = { enableWorker: true, lowLatencyMode: true };
-        let hls = new Hls(hlsConfig);
-        
-        let isSyncing = false;
-        let currentLeaderId = null;
-
-        // UI ПУЛЬТА
-        function updateRemoteUI() {
-            const btn = document.getElementById('remoteBtn');
-            const controls = document.getElementById('videoControls');
-            const isLeader = (socket.id === currentLeaderId);
-
-            if (isLeader) {
-                btn.classList.add('active');
-                btn.innerHTML = `<span>🎮</span> <span>ПУЛЬТ У ВАС (Ви керуєте)</span>`;
-                controls.classList.remove('disabled');
-                document.getElementById('videoUrl').disabled = false;
-            } else {
-                btn.classList.remove('active');
-                btn.innerHTML = `<span>📡</span> <span>Взяти пульт керування</span>`;
-                controls.classList.add('disabled');
-                document.getElementById('videoUrl').disabled = true;
-            }
-        }
-
-        function claimRemote() { socket.emit('claim_remote'); }
-
-        socket.on('update_leader', (leaderId) => {
-            currentLeaderId = leaderId;
-            updateRemoteUI();
-        });
-
-        // ВІДЕО ЛОГІКА
-        function changeVideo(urlFromSocket = null) {
-            let url = urlFromSocket || document.getElementById('videoUrl').value;
-            if (!url) return;
-            
-            if (!urlFromSocket && socket.id !== currentLeaderId) {
-                alert("Тільки власник пульта може міняти відео!");
-                return;
-            }
-
-            // Dropbox / Drive fix
-            if (url.includes('dropbox.com')) url = url.replace('dl=0', 'dl=1');
-            if (url.includes('drive.google.com') && url.includes('/d/')) {
-                const id = url.match(/\/d\/(.+?)\//);
-                if(id) url = `https://drive.google.com/uc?export=download&id=${id[1]}`;
-            }
-
-            if (url.includes('.m3u8')) {
-                if (Hls.isSupported()) {
-                    if(hls) hls.destroy(); 
-                    hls = new Hls(hlsConfig);
-                    hls.loadSource(url); 
-                    hls.attachMedia(video);
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) { 
-                    video.src = url; 
-                }
-            } else { 
-                video.src = url; 
-            }
-
-            if (!urlFromSocket) socket.emit('change_video', url);
-        }
-
-        // SOCKET CONNECTION
-        socket.on('connect', () => socket.emit('join_room', { roomId, userName: myName }));
-        
-        socket.on('update_user_list', (users) => {
-            document.getElementById('userCount').innerText = `Онлайн: ${users.length}`;
-            document.getElementById('userList').innerHTML = users.map(u => `<span class="user-tag">● ${u}</span>`).join('');
-        });
-
-        // --- ВАЖЛИВО: ВІДНОВЛЕННЯ СТАНУ ПІСЛЯ РЕФРЕШУ ---
-        socket.on('initial_state', (data) => {
-            if (data.messages) data.messages.forEach(msg => displayMessage(msg));
-            
-            // 1. Хто лідер?
-            if (data.leaderId) {
-                currentLeaderId = data.leaderId;
-                updateRemoteUI();
-            }
-
-            // 2. Яке відео?
-            if (data.videoUrl) {
-                document.getElementById('videoUrl').value = data.videoUrl;
-                changeVideo(data.videoUrl);
-                
-                // 3. Відновлюємо час і статус (Тільки коли відео завантажиться)
-                video.addEventListener('loadedmetadata', function restoreState() {
-                    if (data.currentTime) video.currentTime = data.currentTime;
-                    if (data.isPlaying) {
-                        video.play().catch(e => console.log("Autoplay block:", e));
-                    }
-                    // Видаляємо слухач, щоб він спрацював тільки 1 раз при старті
-                    video.removeEventListener('loadedmetadata', restoreState);
-                });
-            }
-        });
-
-        socket.on('update_video_url', (url) => changeVideo(url));
-
-        // СИНХРОНІЗАЦІЯ
-        function sendSync(action) {
-            if (socket.id === currentLeaderId && !isSyncing) {
-                socket.emit('sync_action', { 
-                    action: action, 
-                    time: video.currentTime, 
-                    paused: video.paused 
-                });
-            }
-        }
-
-        video.onplay = () => sendSync('play');
-        video.onpause = () => sendSync('pause');
-        video.onseeked = () => sendSync('seek');
-
-        socket.on('receive_sync', (data) => {
-            isSyncing = true; 
-            
-            if (Math.abs(video.currentTime - data.time) > 0.3) {
-                video.currentTime = data.time;
-            }
 
             if (data.action === 'play') {
                 video.play().catch(e => console.log("Autoplay block:", e));
@@ -439,13 +298,13 @@
                 video.pause();
             } else if (data.action === 'seek') {
                 if (data.paused) video.pause();
-                else video.play();
+                else video.play().catch(e => console.log("Seek play error:", e));
             }
 
-            setTimeout(() => { isSyncing = false; }, 400);
+            setTimeout(() => { isSyncing = false; }, 600);
         });
 
-        // ЧАТ
+        // --- ЧАТ ---
         function sendMessage() {
             const input = document.getElementById('msgInput');
             if (input.value.trim()) {
@@ -463,15 +322,17 @@
             const div = document.createElement('div');
             div.className = 'msg';
             let content = data.sticker ? `<img src="${data.sticker}" style="width:100px; border-radius:8px;">` : data.text;
+            
+            // Спеціальний стиль для СИСТЕМИ
             let userStyle = "color:#BB86FC";
             if(data.user === 'СИСТЕМА') userStyle = "color:#03DAC6; font-weight:900";
+
             div.innerHTML = `<strong style="${userStyle}">${data.user}:</strong> ${content} <span style="font-size:10px;color:grey;float:right">${data.time}</span>`;
             const m = document.getElementById('messages');
             m.appendChild(div);
             m.scrollTop = m.scrollHeight;
         }
 
-        // UI ФУНКЦІЇ
         function toggleMenu() {
             const m = document.getElementById('topMenu');
             const b = document.getElementById('toggleBtn');
@@ -489,3 +350,5 @@
         function copyLink() { navigator.clipboard.writeText(window.location.href); alert("Скопійовано!"); }
         function createNewRoom() { if(confirm("Створити нову кімнату?")) window.location.search = '?room=room-' + Math.floor(Math.random() * 9999); }
     </script>
+</body>
+</html>
