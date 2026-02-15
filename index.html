@@ -287,8 +287,8 @@
         socket.on('receive_sync', (data) => {
             isSyncing = true;
             
-            // Якщо ми відстали/поспішили більше ніж на 0.5 сек - рівняємось
-            if (Math.abs(video.currentTime - data.time) > 0.5) {
+            // Якщо ми відстали/поспішили більше ніж на 0.3 сек - рівняємось
+            if (Math.abs(video.currentTime - data.time) > 0.3) {
                 video.currentTime = data.time;
             }
 
