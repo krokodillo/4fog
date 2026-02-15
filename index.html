@@ -313,6 +313,209 @@
                 input.value = "";
             }
         }
+            <script>
+        const SERVER_URL = 'https://cinema-server-cz03.onrender.com'; 
+        
+        const socket = io(SERVER_URL, {
+            transports: ['websocket'], 
+            upgrade: false
+        });
+
+        const video = document.getElementById('myVideo');
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        let roomId = urlParams.get('room') || 'room-' + Math.floor(Math.random() * 9999);
+        if (!urlParams.get('room')) window.history.pushState({}, '', '?room=' + roomId);
+        document.getElementById('roomName').innerText = roomId;
+
+        let myName = localStorage.getItem('username') || prompt("Як тебе звати?", "Козак") || "Анонім";
+        localStorage.setItem('username', myName);
+
+        const hlsConfig = { enableWorker: true, lowLatencyMode: true };
+        let hls = new Hls(hlsConfig);
+        
+        let isSyncing = false;
+        let currentLeaderId = null;
+        let lastKnownTime = 0; // Пам'ять для блокування перемотки
+
+        // --- UI ПУЛЬТА ---
+        function updateRemoteUI() {
+            const btn = document.getElementById('remoteBtn');
+            const controls = document.getElementById('videoControls');
+            const isLeader = (socket.id === currentLeaderId);
+
+            if (isLeader) {
+                btn.classList.add('active');
+                btn.innerHTML = `<span>🎮</span> <span>ПУЛЬТ У ВАС (Ви керуєте)</span>`;
+                controls.classList.remove('disabled');
+                document.getElementById('videoUrl').disabled = false;
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = `<span>📡</span> <span>Взяти пульт керування</span>`;
+                controls.classList.add('disabled');
+                document.getElementById('videoUrl').disabled = true;
+            }
+        }
+
+        function claimRemote() { socket.emit('claim_remote'); }
+
+        socket.on('update_leader', (leaderId) => {
+            currentLeaderId = leaderId;
+            updateRemoteUI();
+        });
+
+        // --- ВІДЕО ФУНКЦІЇ ---
+        function changeVideo(urlFromSocket = null) {
+            let url = urlFromSocket || document.getElementById('videoUrl').value;
+            if (!url) return;
+            
+            if (!urlFromSocket && socket.id !== currentLeaderId) {
+                alert("⛔ Тільки власник пульта може міняти відео!");
+                return;
+            }
+
+            if (url.includes('dropbox.com')) url = url.replace('dl=0', 'dl=1');
+            if (url.includes('drive.google.com') && url.includes('/d/')) {
+                const id = url.match(/\/d\/(.+?)\//);
+                if(id) url = `https://drive.google.com/uc?export=download&id=${id[1]}`;
+            }
+
+            if (url.includes('.m3u8')) {
+                if (Hls.isSupported()) {
+                    if(hls) hls.destroy(); 
+                    hls = new Hls(hlsConfig);
+                    hls.loadSource(url); 
+                    hls.attachMedia(video);
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) { 
+                    video.src = url; 
+                }
+            } else { video.src = url; }
+
+            if (!urlFromSocket) socket.emit('change_video', url);
+        }
+
+        socket.on('connect', () => socket.emit('join_room', { roomId, userName: myName }));
+        
+        socket.on('update_user_list', (users) => {
+            document.getElementById('userCount').innerText = `Онлайн: ${users.length}`;
+            document.getElementById('userList').innerHTML = users.map(u => `<span class="user-tag">● ${u}</span>`).join('');
+        });
+
+        socket.on('initial_state', (data) => {
+            if (data.messages) data.messages.forEach(msg => displayMessage(msg));
+            if (data.leaderId) {
+                currentLeaderId = data.leaderId;
+                updateRemoteUI();
+            }
+            if (data.videoUrl) {
+                document.getElementById('videoUrl').value = data.videoUrl;
+                changeVideo(data.videoUrl);
+                
+                video.addEventListener('loadedmetadata', function restoreState() {
+                    if (data.currentTime) video.currentTime = data.currentTime;
+                    lastKnownTime = data.currentTime; // Запам'ятовуємо час
+                    if (data.isPlaying) video.play().catch(e => console.log("Block"));
+                    video.removeEventListener('loadedmetadata', restoreState);
+                });
+            }
+        });
+
+        socket.on('update_video_url', (url) => changeVideo(url));
+
+
+        // --- ГОЛОВНА ЛОГІКА БЛОКУВАННЯ (GUARD MODE) ---
+
+        function sendSync(action) {
+            // Лише відправляємо, якщо ми лідер
+            if (socket.id === currentLeaderId && !isSyncing) {
+                socket.emit('sync_action', { 
+                    action: action, 
+                    time: video.currentTime, 
+                    paused: video.paused 
+                });
+            }
+        }
+
+        // 1. БЛОКУВАННЯ ПЛЕЙ
+        video.onplay = () => {
+            if (socket.id !== currentLeaderId && !isSyncing) {
+                // Якщо ми не лідер і це не синхронізація - СКАСУВАТИ
+                video.pause();
+                console.log("Play blocked: You are not leader");
+                return;
+            }
+            sendSync('play');
+        };
+
+        // 2. БЛОКУВАННЯ ПАУЗИ
+        video.onpause = () => {
+            if (socket.id !== currentLeaderId && !isSyncing) {
+                // Якщо не лідер натиснув паузу - ВІДРАЗУ ГРАТИ ДАЛІ
+                video.play();
+                console.log("Pause blocked: You are not leader");
+                // Можна додати красиве повідомлення, якщо хочеш
+                return;
+            }
+            sendSync('pause');
+        };
+
+        // 3. БЛОКУВАННЯ ПЕРЕМОТКИ
+        video.onseeking = () => { // Використовуємо onseeking для швидшої реакції
+            if (socket.id !== currentLeaderId && !isSyncing) {
+                // Якщо не лідер крутить час - повертаємо назад
+                const diff = Math.abs(video.currentTime - lastKnownTime);
+                if (diff > 2) { // Дозволяємо дрібні стрибки (глюки), блокуємо великі
+                    video.currentTime = lastKnownTime;
+                    console.log("Seek blocked");
+                    return;
+                }
+            }
+        };
+
+        video.onseeked = () => {
+            if (socket.id === currentLeaderId) sendSync('seek');
+        };
+
+        // ПРИЙОМ СИГНАЛІВ
+        socket.on('receive_sync', (data) => {
+            isSyncing = true; 
+            
+            // Оновлюємо "дозволений час"
+            lastKnownTime = data.time; 
+
+            if (Math.abs(video.currentTime - data.time) > 0.3) {
+                video.currentTime = data.time;
+            }
+
+            if (data.action === 'play') {
+                video.play().catch(e => {});
+            } else if (data.action === 'pause') {
+                video.pause();
+            } else if (data.action === 'seek') {
+                if (data.paused) video.pause();
+                else video.play();
+            }
+
+            setTimeout(() => { isSyncing = false; }, 400);
+        });
+
+        // ПЕРІОДИЧНЕ ОНОВЛЕННЯ ЧАСУ ДЛЯ НЕ-ЛІДЕРІВ
+        // Це допомагає тримати lastKnownTime актуальним, щоб не кидало назад випадково
+        setInterval(() => {
+            if (!video.paused) {
+                lastKnownTime = video.currentTime;
+            }
+        }, 1000);
+
+
+        // --- ЧАТ ---
+        function sendMessage() {
+            const input = document.getElementById('msgInput');
+            if (input.value.trim()) {
+                socket.emit('send_message', { user: myName, text: input.value, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+                input.value = "";
+            }
+        }
         function sendSticker(url) {
             socket.emit('send_message', { user: myName, sticker: url, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
             toggleStickers();
@@ -348,5 +551,4 @@
         function copyLink() { navigator.clipboard.writeText(window.location.href); alert("Скопійовано!"); }
         function createNewRoom() { if(confirm("Створити нову кімнату?")) window.location.search = '?room=room-' + Math.floor(Math.random() * 9999); }
     </script>
-</body>
-</html>
+    
