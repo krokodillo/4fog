@@ -161,14 +161,16 @@
             }
         }
 
-        function claimRemote() { socket.emit('claim_remote'); }
+        // ОНОВЛЕНА ФУНКЦІЯ ПУЛЬТА: Передаємо час, щоб сервер знав, де ми зупинилися
+        function claimRemote() { 
+            socket.emit('claim_remote', { time: video.currentTime }); 
+        }
 
         socket.on('update_leader', (leaderId) => {
             currentLeaderId = leaderId;
             updateRemoteUI();
         });
 
-        // !!! СЛУХАЧ ДЛЯ ПЕРЕЗАВАНТАЖЕННЯ !!!
         socket.on('force_reload', () => {
             console.log("Leader changed, forcing reload for sync...");
             window.location.reload();
