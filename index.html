@@ -14,80 +14,75 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 0; padding: 0; 
             height: 100vh;
-            display: flex; 
-            flex-direction: column;
-            overflow: hidden; 
+            display: flex; flex-direction: column; overflow: hidden; 
         }
 
-        /* 1. ШАПКА (Фіксована) */
+        /* ШАПКА */
         .header-bar {
             width: 100%; height: 35px; background: #1a1a1a; border-bottom: 1px solid #333; 
             display: flex; align-items: center; padding: 0 10px; 
             position: fixed; top: 0; left: 0; z-index: 2000;
         }
 
-        /* 2. ОСНОВНИЙ КОНТЕНТ (Скрол) */
+        /* СКРОЛ ЗОНА */
         .main-scroll-area {
-            flex-grow: 1;
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            padding-top: 45px; 
-            padding-bottom: 10px;
-            padding-left: 10px;
-            padding-right: 10px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
+            flex-grow: 1; width: 100%; max-width: 800px; margin: 0 auto;
+            padding-top: 45px; padding-bottom: 10px; padding-left: 10px; padding-right: 10px;
+            overflow-y: auto; display: flex; flex-direction: column;
         }
 
-        /* Стилі панелей */
+        /* ПАНЕЛІ */
         .room-panel {
             background: #1E1E1E; padding: 10px 15px; border-radius: 12px; margin-bottom: 8px;
-            display: flex; justify-content: space-between; align-items: center; 
-            border: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center; border: 1px solid #333;
         }
         .room-label { font-size: 10px; color: #888; text-transform: uppercase; }
         #roomName { color: #BB86FC; font-weight: bold; font-size: 16px; }
 
-        /* КНОПКИ (Твій дизайн) */
+        /* КНОПКИ */
         button { cursor: pointer; border: none; font-weight: bold; border-radius: 6px; padding: 8px 12px; transition: 0.2s; }
         .btn-copy { background: #333; color: #fff; }
         .btn-new { background: #333; color: #fff; border: 1px solid #555; }
         .btn-load { background: #BB86FC; color: #000; }
+        
+        /* КНОПКА ПУЛЬТА */
+        .btn-remote { 
+            width: 100%; margin-bottom: 8px; padding: 10px; 
+            background: #333; color: #888; border: 1px dashed #555;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-remote.active {
+            background: #03DAC6; color: #000; border: 1px solid #03DAC6;
+            box-shadow: 0 0 10px rgba(3, 218, 198, 0.3);
+        }
 
-        /* ФІОЛЕТОВА КНОПКА (З тінню) */
+        /* Елементи керування */
+        .controls { width: 100%; margin-bottom: 8px; display: flex; gap: 5px; transition: opacity 0.3s; }
+        /* Клас для відключення керування */
+        .controls.disabled { opacity: 0.5; pointer-events: none; }
+        
+        input.url-input { flex-grow: 1; padding: 12px; border-radius: 8px; border: none; background: #252525; color: white; border: 1px solid #333; }
+
         #toggleBtn {
             width: 100%; background: #BB86FC !important; color: #000 !important;
             padding: 12px; font-size: 13px; font-weight: bold; border-radius: 0 0 12px 12px;
-            margin-bottom: 15px; text-transform: uppercase; 
-            box-shadow: 0 4px 10px rgba(187,134,252,0.2); /* Тінь повернуто */
-            cursor: pointer;
+            margin-bottom: 15px; text-transform: uppercase; box-shadow: 0 4px 10px rgba(187,134,252,0.2);
         }
-
-        .controls { width: 100%; margin-bottom: 8px; display: flex; gap: 5px; }
-        input.url-input { flex-grow: 1; padding: 12px; border-radius: 8px; border: none; background: #252525; color: white; border: 1px solid #333; }
 
         video { width: 100%; border-radius: 10px; background: #000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); display: block; }
 
-        /* ОНЛАЙН */
+        /* ЧАТ ТА ІНШЕ */
         .online-box {
-            background: #1E1E1E; border: 1px solid #333;
-            border-radius: 10px 10px 0 0; margin-top: 15px; overflow: hidden; cursor: pointer;
-            flex-shrink: 0;
+            background: #1E1E1E; border: 1px solid #333; border-radius: 10px 10px 0 0; 
+            margin-top: 15px; overflow: hidden; cursor: pointer; flex-shrink: 0;
         }
         .online-header { padding: 10px; display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; color: #03DAC6; }
         #userList { display: none; padding: 10px; border-top: 1px solid #333; font-size: 12px; color: #bbb; background: #181818; }
         .user-tag { display: inline-block; background: #252525; padding: 4px 10px; border-radius: 15px; margin: 3px; border: 1px solid #444; color: #eee; }
 
-        /* ЧАТ */
         #chat-container {
-            display: flex; flex-direction: column;
-            background: #1E1E1E; border-radius: 0 0 12px 12px; 
-            border: 1px solid #333; border-top: none;
-            height: 300px; 
-            min-height: 200px;
-            flex-shrink: 0; 
+            display: flex; flex-direction: column; background: #1E1E1E; border-radius: 0 0 12px 12px; 
+            border: 1px solid #333; border-top: none; height: 300px; min-height: 200px; flex-shrink: 0; 
         }
         #messages { flex-grow: 1; padding: 12px; overflow-y: auto; text-align: left; }
         .msg { margin-bottom: 12px; font-size: 14px; word-wrap: break-word; }
@@ -99,21 +94,24 @@
         .sticker-option { width: 100%; cursor: pointer; transition: 0.2s; }
         .sticker-option:hover { transform: scale(1.15); }
 
-        /* НИЖНЯ ПАНЕЛЬ (Твій дизайн) */
         .input-area { display: flex; padding: 10px; background: #252525; gap: 8px; border-top: 1px solid #333; align-items: center; }
         #msgInput { flex-grow: 1; padding: 12px; border-radius: 8px; border: none; background: #333; color: white; }
-        
-        /* Кнопки в чаті */
         .btn-sticker { background: #333; color: white; font-size: 18px; border: 1px solid #444; padding: 8px 12px; border-radius: 6px; }
         .btn-send { background: #03DAC6; border: none; padding: 10px 18px; border-radius: 8px; color: #000; font-weight: bold; }
+        
+        /* Статус лідера */
+        .leader-badge { 
+            background: #FFD700; color: #000; padding: 2px 6px; border-radius: 4px; 
+            font-size: 10px; font-weight: bold; margin-left: 5px; 
+        }
     </style>
 </head>
 <body>
 
     <div class="header-bar">
         <img src="stiker/tinifIed (2)/IMG_20260208_183334.png" style="height: 20px; margin-right: 10px;" onerror="this.style.display='none'">
-        <span style="font-size: 11px; font-weight: bold; color: #BB86FC; letter-spacing: 1px;">4FOG.NETLIFY.APP</span>
-        <span style="font-size: 9px; color: #666; margin-left: auto;">тех підтримка TG: @blendametal</span>
+        <span style="font-size: 11px; font-weight: bold; color: #BB86FC; letter-spacing: 1px;">КІМНАТА ГОТОВА</span>
+        <span style="font-size: 9px; color: #666; margin-left: auto;">TG: @blendametal</span>
     </div>
 
     <div class="main-scroll-area">
@@ -129,7 +127,12 @@
                     <button class="btn-new" onclick="createNewRoom()">➕ Нова</button>
                 </div>
             </div>
-            <div class="controls">
+
+            <button id="remoteBtn" class="btn-remote" onclick="claimRemote()">
+                <span>📡</span> <span>Взяти пульт керування</span>
+            </button>
+
+            <div class="controls" id="videoControls">
                 <input type="text" class="url-input" id="videoUrl" placeholder="Посилання (.mp4 / .m3u8)...">
                 <button class="btn-load" onclick="changeVideo()">▶ PLAY</button>
             </div>
@@ -172,7 +175,6 @@
         const socket = io(SERVER_URL);
         const video = document.getElementById('myVideo');
         
-        // --- ЛОГІКА КІМНАТ ---
         const urlParams = new URLSearchParams(window.location.search);
         let roomId = urlParams.get('room') || 'room-' + Math.floor(Math.random() * 9999);
         if (!urlParams.get('room')) window.history.pushState({}, '', '?room=' + roomId);
@@ -182,12 +184,50 @@
         localStorage.setItem('username', myName);
 
         let hls = new Hls();
-        let isSyncing = false; // Блокування, щоб не відправляти свої ж події назад
+        let isSyncing = false;
+        
+        // --- ЛОГІКА ПУЛЬТА ---
+        let currentLeaderId = null;
 
-        // --- ВІДЕО ---
+        function updateRemoteUI() {
+            const btn = document.getElementById('remoteBtn');
+            const controls = document.getElementById('videoControls');
+            const isLeader = (socket.id === currentLeaderId);
+
+            if (isLeader) {
+                btn.classList.add('active');
+                btn.innerHTML = `<span>🎮</span> <span>ПУЛЬТ У ВАС (Ви керуєте)</span>`;
+                controls.classList.remove('disabled'); // Вмикаємо ввід
+                document.getElementById('videoUrl').disabled = false;
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = `<span>📡</span> <span>Взяти пульт керування</span>`;
+                controls.classList.add('disabled'); // Вимикаємо ввід
+                document.getElementById('videoUrl').disabled = true;
+            }
+        }
+
+        function claimRemote() {
+            socket.emit('claim_remote');
+        }
+
+        socket.on('update_leader', (leaderId) => {
+            currentLeaderId = leaderId;
+            updateRemoteUI();
+        });
+
+
+        // --- ВІДЕО ФУНКЦІЇ ---
         function changeVideo(urlFromSocket = null) {
             let url = urlFromSocket || document.getElementById('videoUrl').value;
             if (!url) return;
+            
+            // Якщо це ручний ввід і ти не лідер - заборонити
+            if (!urlFromSocket && socket.id !== currentLeaderId) {
+                alert("Тільки власник пульта може міняти відео!");
+                return;
+            }
+
             if (url.includes('dropbox.com')) url = url.replace('dl=0', 'dl=1');
             if (url.includes('drive.google.com') && url.includes('/d/')) {
                 const id = url.match(/\/d\/(.+?)\//);
@@ -196,91 +236,73 @@
 
             if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
-                    hls.destroy();
-                    hls = new Hls();
-                    hls.loadSource(url);
-                    hls.attachMedia(video);
+                    hls.destroy(); hls = new Hls(); hls.loadSource(url); hls.attachMedia(video);
                     hls.on(Hls.Events.MANIFEST_PARSED, function() { 
-                        // Не запускаємо автоплей, щоб уникнути хаосу на старті
+                        // Автоплей тільки якщо команда прийшла від лідера
                     });
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    video.src = url;
-                }
-            } else {
-                video.src = url;
-            }
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) { video.src = url; }
+            } else { video.src = url; }
+
             if (!urlFromSocket) socket.emit('change_video', url);
         }
 
-        // --- SOCKET CONNECTION ---
+        // --- SOCKET ---
         socket.on('connect', () => socket.emit('join_room', { roomId, userName: myName }));
+        
         socket.on('update_user_list', (users) => {
             document.getElementById('userCount').innerText = `Онлайн: ${users.length}`;
             document.getElementById('userList').innerHTML = users.map(u => `<span class="user-tag">● ${u}</span>`).join('');
         });
+
         socket.on('initial_state', (data) => {
             if (data.messages) data.messages.forEach(msg => displayMessage(msg));
+            if (data.leaderId) {
+                currentLeaderId = data.leaderId;
+                updateRemoteUI();
+            }
             if (data.videoUrl) {
                 document.getElementById('videoUrl').value = data.videoUrl;
                 changeVideo(data.videoUrl);
             }
         });
+
         socket.on('update_video_url', (url) => changeVideo(url));
 
-
-        // --- ГОЛОВНА ЛОГІКА СИНХРОНІЗАЦІЇ (ВИПРАВЛЕНО) ---
-
-        // 1. Відправка подій (Я щось зробив -> кажу серверу)
-        video.onplay = () => { 
-            if(!isSyncing) socket.emit('sync_action', { action: 'play', time: video.currentTime }); 
-        };
+        // --- СИНХРОНІЗАЦІЯ (ТІЛЬКИ ЛІДЕР ВІДПРАВЛЯЄ) ---
         
-        video.onpause = () => { 
-            if(!isSyncing) socket.emit('sync_action', { action: 'pause', time: video.currentTime }); 
-        };
-        
-        video.onseeked = () => { 
-            if(!isSyncing) {
-                // При перемотуванні передаємо також, чи стоїмо ми на паузі
+        function sendSync(action) {
+            if (socket.id === currentLeaderId && !isSyncing) {
                 socket.emit('sync_action', { 
-                    action: 'seek', 
+                    action: action, 
                     time: video.currentTime, 
                     paused: video.paused 
-                }); 
+                });
             }
-        };
+        }
 
-        // 2. Прийом подій (Сервер сказав щось зробити)
+        video.onplay = () => sendSync('play');
+        video.onpause = () => sendSync('pause');
+        video.onseeked = () => sendSync('seek');
+
         socket.on('receive_sync', (data) => {
-            isSyncing = true; // Вмикаємо "імунітет" від власних подій
-
-            // Синхронізуємо час, якщо різниця більше 0.5 сек
+            isSyncing = true;
+            
+            // Якщо ми відстали/поспішили більше ніж на 0.5 сек - рівняємось
             if (Math.abs(video.currentTime - data.time) > 0.5) {
                 video.currentTime = data.time;
             }
 
-            // Виконуємо дію
             if (data.action === 'play') {
-                video.play().catch(e => console.log("Автоплей заблоковано браузером:", e));
-            } 
-            else if (data.action === 'pause') {
+                video.play().catch(e => console.log("Autoplay block:", e));
+            } else if (data.action === 'pause') {
                 video.pause();
-            } 
-            else if (data.action === 'seek') {
-                // Якщо той хто перемотав - стоїть на паузі, ми теж стаємо на паузу
-                if (data.paused) {
-                    video.pause();
-                } else {
-                    // Якщо він грає - ми теж граємо
-                    video.play().catch(e => console.log("Seek play error:", e));
-                }
+            } else if (data.action === 'seek') {
+                if (data.paused) video.pause();
+                else video.play().catch(e => console.log("Seek play error:", e));
             }
 
-            // Знімаємо "імунітет" через 600мс (було 200мс). 
-            // Це дає час m3u8 файлу провантажитися після стрибка.
             setTimeout(() => { isSyncing = false; }, 600);
         });
-
 
         // --- ЧАТ ---
         function sendMessage() {
@@ -300,13 +322,17 @@
             const div = document.createElement('div');
             div.className = 'msg';
             let content = data.sticker ? `<img src="${data.sticker}" style="width:100px; border-radius:8px;">` : data.text;
-            div.innerHTML = `<strong style="color:#BB86FC">${data.user}:</strong> ${content} <span style="font-size:10px;color:grey;float:right">${data.time}</span>`;
+            
+            // Спеціальний стиль для СИСТЕМИ
+            let userStyle = "color:#BB86FC";
+            if(data.user === 'СИСТЕМА') userStyle = "color:#03DAC6; font-weight:900";
+
+            div.innerHTML = `<strong style="${userStyle}">${data.user}:</strong> ${content} <span style="font-size:10px;color:grey;float:right">${data.time}</span>`;
             const m = document.getElementById('messages');
             m.appendChild(div);
             m.scrollTop = m.scrollHeight;
         }
 
-        // --- UI ФУНКЦІЇ ---
         function toggleMenu() {
             const m = document.getElementById('topMenu');
             const b = document.getElementById('toggleBtn');
@@ -324,3 +350,5 @@
         function copyLink() { navigator.clipboard.writeText(window.location.href); alert("Скопійовано!"); }
         function createNewRoom() { if(confirm("Створити нову кімнату?")) window.location.search = '?room=room-' + Math.floor(Math.random() * 9999); }
     </script>
+</body>
+</html>
