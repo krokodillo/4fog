@@ -76,7 +76,7 @@
             background: transparent; border: 1px solid #555; color: #BB86FC;
             width: 24px; height: 24px; border-radius: 50%; font-weight: bold;
             font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-          auto; /* Ця магія притискає кнопку в */
+            margin-left: auto; /* Ця магія притискає кнопку вправо */
         }
         .btn-help:hover { background: #BB86FC; color: #000; }
 
@@ -112,8 +112,7 @@
 <body>
         <div class="header-bar">
         <img src="stiker/tinifIed (2)/IMG_20260208_183334.png" style="height: 20px; margin-right: 10px;" onerror="this.style.display='none'">
-        <span style="font-size: 11px; font-weight: bold; color: #BB86FC; letter-spacing: 1px; display: flex;
-            justify-content: center;"> 4Fog сервіс.</span>
+        <span style="font-size: 11px; font-weight: bold; color: #BB86FC; letter-spacing: 1px;"> 4Fog сервіс.</span>
         <button class="btn-help" onclick="toggleHelp()">?</button>
     </div>
         <div id="helpModal" class="modal-overlay" onclick="toggleHelp()">
@@ -142,14 +141,6 @@
             <div class="help-text">
                 <strong style="color:#03DAC6">4. Де можливо взяти посилання?</strong><br>
                 використовуй свій браузер (якщо є кнопка на сайті "скачати відео" вам потрібно саме посилання на цю кнопку формат .mp4 .m3u8) є також браузер <b>1DM</b> (Android) або розширення для Chrome де ці функції більш зручніші і швидше
-            </div> 
-              <div class="help-text">
-                <strong style="color:#03DAC6">5. Не працює відео?</strong><br>
-                Сайт підтримує <b>.mp4</b> та <b>.m3u8</b> (HLS).<br>
-                Все працює, за умови якщо ви можете з свого пристрою .<br>
-                дивитися цей контент, враховуйте що друзі будуть мати <br> 
-                різні пристрої, браузери, країну можливо кращим варіантом  <br> 
-                буде взяти інше посилання з іншого сайту.
             </div>
         </div>
     </div>
