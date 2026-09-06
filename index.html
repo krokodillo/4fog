@@ -107,22 +107,17 @@
             <div class="help-title">🎬 Як користуватися 4Fog Cinema?</div>
             <div class="help-text">
                 <strong style="color:#03DAC6">1. Запроси друзів</strong><br>
-                Натисни кнопку <span class="help-tag">🔗 Лінк</span> зверху, скопіюй посилання та відправ друзям, учням чи напарнику по роботі.
+                Натисни кнопку <span class="help-tag">🔗 Лінк</span> зверху, скопіюй посилання та відправ друзям.
             </div>
             <div class="help-text">
                 <strong style="color:#03DAC6">2. Хто тут головний?</strong><br>
                 Щоб керувати відео, натисни <span class="help-tag">📡 Взяти пульт</span>. 
-                Тільки власник пульта може ставити паузу, перемотувати та міняти відео та контент на ваш смак. 
+                Тільки власник пульта може ставити паузу, перемотувати та міняти відео.
             </div>
             <div class="help-text">
                 <strong style="color:#03DAC6">3. Як додати відео?</strong><br>
                 Сайт підтримує <b>.mp4</b> та <b>.m3u8</b> (HLS).<br>
-                — Скопіюй пряме посилання на файл.<br>
-                — Встав у поле зверху і натисни <span class="help-tag">▶ PLAY</span>.
-            </div>
-            <div class="help-text">
-                <strong style="color:#03DAC6">4. Де можливо взяти посилання?</strong><br>
-                Використовуй свій браузер (якщо є кнопка на сайті "скачати відео" вам потрібно саме посилання на цю кнопку формат .mp4 .m3u8). Є також браузер <b>1DM</b> (Android) або розширення для Chrome, де ці функції більш зручні.
+                — Встав посилання у поле і натисни <span class="help-tag">▶ PLAY</span>.
             </div>
         </div>
     </div>
@@ -223,7 +218,7 @@
         });
 
         socket.on('force_reload', () => {
-            console.log("Leader changed, forcing reload for sync...");
+            console.log("Оновлення лідера...");
             window.location.reload();
         });
 
@@ -256,9 +251,6 @@
                     hls.on(Hls.Events.MANIFEST_PARSED, function() {
                         console.log('HLS-потік успішно завантажено.');
                     });
-                    hls.on(Hls.Events.ERROR, function(event, data) {
-                        console.error('Помилка HLS:', data);
-                    });
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) { 
                     video.src = url; 
                 }
@@ -285,7 +277,6 @@
                 changeVideo(data.videoUrl);
                 video.addEventListener('loadedmetadata', function restoreState() {
                     if (data.currentTime) { video.currentTime = data.currentTime; lastKnownTime = data.currentTime; }
-                    if (data.isPlaying) video.play().catch(e => console.log("Auto-play blocked"));
                     video.removeEventListener('loadedmetadata', restoreState);
                 });
             }
@@ -328,13 +319,39 @@
         
         video.onseeked = () => { if (socket.id === currentLeaderId) sendSync('seek'); };
 
+        // ОНОВЛЕНИЙ БЛОК СИНХРОНІЗАЦІЇ 
         socket.on('receive_sync', (data) => {
-            isSyncing = true; lastKnownTime = data.time; 
-            if (Math.abs(video.currentTime - data.time) > 0.3) { video.currentTime = data.time; }
-            if (data.action === 'play') { video.play().catch(e => {}); } 
-            else if (data.action === 'pause') { video.pause(); } 
-            else if (data.action === 'seek') { if (data.paused) video.pause(); else video.play(); }
-            setTimeout(() => { isSyncing = false; }, 400);
+            isSyncing = true; 
+            lastKnownTime = data.time; 
+            
+            // Якщо є розсинхрон більше ніж 0.3 секунди - перемотуємо
+            if (Math.abs(video.currentTime - data.time) > 0.3) { 
+                video.currentTime = data.time; 
+            }
+            
+            // Обробка запуску
+            if (data.action === 'play' || (data.action === 'seek' && !data.paused)) {
+                let playPromise = video.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        // Знімаємо блок тільки після фактичного успішного старту відео
+                        setTimeout(() => { isSyncing = false; }, 200);
+                    }).catch(error => {
+                        // Якщо браузер заблокував відтворення, просимо користувача клацнути
+                        isSyncing = false;
+                        if(confirm("▶️ Браузер заблокував автоматичний запуск. Натисніть 'ОК', щоб дозволити відтворення!")) {
+                            video.play();
+                        }
+                    });
+                } else {
+                    setTimeout(() => { isSyncing = false; }, 400);
+                }
+            } 
+            // Обробка паузи
+            else if (data.action === 'pause' || (data.action === 'seek' && data.paused)) { 
+                video.pause(); 
+                setTimeout(() => { isSyncing = false; }, 400);
+            }
         });
         
         setInterval(() => { if (!video.paused) lastKnownTime = video.currentTime; }, 1000);
