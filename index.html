@@ -241,9 +241,16 @@
                 if(id) url = `https://drive.google.com/uc?export=download&id=${id[1]}`;
             }
 
+            // Повне очищення старого плеєра перед новим посиланням
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            video.removeAttribute('src');
+            video.load();
+
             if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
-                    if(hls) hls.destroy(); 
                     hls = new Hls(hlsConfig);
                     hls.loadSource(url); 
                     hls.attachMedia(video);
@@ -319,25 +326,20 @@
         
         video.onseeked = () => { if (socket.id === currentLeaderId) sendSync('seek'); };
 
-        // ОНОВЛЕНИЙ БЛОК СИНХРОНІЗАЦІЇ 
         socket.on('receive_sync', (data) => {
             isSyncing = true; 
             lastKnownTime = data.time; 
             
-            // Якщо є розсинхрон більше ніж 0.3 секунди - перемотуємо
             if (Math.abs(video.currentTime - data.time) > 0.3) { 
                 video.currentTime = data.time; 
             }
             
-            // Обробка запуску
             if (data.action === 'play' || (data.action === 'seek' && !data.paused)) {
                 let playPromise = video.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-                        // Знімаємо блок тільки після фактичного успішного старту відео
                         setTimeout(() => { isSyncing = false; }, 200);
                     }).catch(error => {
-                        // Якщо браузер заблокував відтворення, просимо користувача клацнути
                         isSyncing = false;
                         if(confirm("▶️ Браузер заблокував автоматичний запуск. Натисніть 'ОК', щоб дозволити відтворення!")) {
                             video.play();
@@ -347,7 +349,6 @@
                     setTimeout(() => { isSyncing = false; }, 400);
                 }
             } 
-            // Обробка паузи
             else if (data.action === 'pause' || (data.action === 'seek' && data.paused)) { 
                 video.pause(); 
                 setTimeout(() => { isSyncing = false; }, 400);
