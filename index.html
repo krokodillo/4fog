@@ -69,18 +69,15 @@
         #msgInput { flex-grow: 1; padding: 12px; border-radius: 8px; border: none; background: #333; color: white; }
         .btn-sticker { background: #333; color: white; font-size: 18px; border: 1px solid #444; padding: 8px 12px; border-radius: 6px; }
         .btn-send { background: #03DAC6; border: none; padding: 10px 18px; border-radius: 8px; color: #000; font-weight: bold; }
-            /* --- ПОЧАТОК НОВОГО КОДУ --- */
         
-        /* Кнопка зі знаком питання */
         .btn-help {
             background: transparent; border: 1px solid #555; color: #BB86FC;
             width: 24px; height: 24px; border-radius: 50%; font-weight: bold;
             font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            margin-left: auto; /* Ця магія притискає кнопку вправо */
+            margin-left: auto;
         }
         .btn-help:hover { background: #BB86FC; color: #000; }
 
-        /* Темний фон на весь екран */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); z-index: 3000;
@@ -88,47 +85,42 @@
             backdrop-filter: blur(5px);
         }
 
-        /* Саме вікно з текстом */
         .modal-content {
             background: #1E1E1E; border: 1px solid #333; border-radius: 12px;
             width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto;
             padding: 20px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        /* Хрестик закриття */
         .close-btn {
             position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #888;
         }
 
-        /* Оформлення тексту */
         .help-title { color: #BB86FC; font-size: 18px; margin-bottom: 15px; font-weight: bold; }
         .help-text { font-size: 14px; line-height: 1.5; color: #ddd; margin-bottom: 10px; }
         .help-tag { background: #333; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #03DAC6; }
-        
-        /* --- КІНЕЦЬ НОВОГО КОДУ --- */
-
     </style>
 </head>
 <body>
-        <div class="header-bar">
+    <div class="header-bar">
         <img src="stiker/IMG0logo.png" style="height: 20px; margin-right: 10px;" onerror="this.style.display='none'">
         <span style="font-size: 11px; font-weight: bold; color: #BB86FC; letter-spacing: 1px;"> 4Fog сервіс.</span>
         <button class="btn-help" onclick="toggleHelp()">?</button>
     </div>
-        <div id="helpModal" class="modal-overlay" onclick="toggleHelp()">
+
+    <div id="helpModal" class="modal-overlay" onclick="toggleHelp()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <span class="close-btn" onclick="toggleHelp()">&times;</span>
             <div class="help-title">🎬 Як користуватися 4Fog Cinema?</div>
             
             <div class="help-text">
                 <strong style="color:#03DAC6">1. Запроси друзів</strong><br>
-                Натисни кнопку <span class="help-tag">🔗 Лінк</span> зверху, скопіюй посилання та відправ друзям, учням чи напарнику по роботі.
+                Натисни кнопку <span class="help-tag">🔗 Лінк</span> зверху, скопіюй посилання та відправ друзям.
             </div>
 
             <div class="help-text">
                 <strong style="color:#03DAC6">2. Хто тут головний?</strong><br>
                 Щоб керувати відео, натисни <span class="help-tag">📡 Взяти пульт</span>. 
-                Тільки власник пульта може ставити паузу, перемотувати та міняти відео та контент на ваш смак. 
+                Тільки власник пульта може ставити паузу, перемотувати та міняти відео. 
             </div>
 
             <div class="help-text">
@@ -139,12 +131,11 @@
             </div>
 
             <div class="help-text">
-                <strong style="color:#03DAC6">4. Де можливо взяти посилання?</strong><br>
-                використовуй свій браузер (якщо є кнопка на сайті "скачати відео" вам потрібно саме посилання на цю кнопку формат .mp4 .m3u8) є також браузер <b>1DM</b> (Android) або розширення для Chrome де ці функції більш зручніші і швидше
+                <strong style="color:#03DAC6">4. Де взяти посилання?</strong><br>
+                Використовуй браузер <b>1DM</b> (Android) або розширення для Chrome для швидкого захоплення `.mp4` / `.m3u8` посилань.
             </div>
         </div>
     </div>
-
 
     <div class="main-scroll-area">
         <div id="topMenu">
@@ -205,12 +196,20 @@
         localStorage.setItem('username', myName);
 
         const hlsConfig = { enableWorker: true, lowLatencyMode: true };
-        let hls = new Hls(hlsConfig);
+        let hls = null;
         
         let isSyncing = false;
         let isProtecting = false;
         let currentLeaderId = null;
         let lastKnownTime = 0;
+
+        // Обробка помилок завантаження відео в плеєрі
+        video.onerror = () => {
+            if (video.src && video.src !== window.location.href) {
+                console.error("Video Error:", video.error);
+                alert("⚠️ Не вдалося завантажити відео. Перевірте пряме посилання або доступність файлу (CORS / кодеки).");
+            }
+        };
 
         function updateRemoteUI() {
             const btn = document.getElementById('remoteBtn');
@@ -229,7 +228,6 @@
             }
         }
 
-        // ОНОВЛЕНА ФУНКЦІЯ ПУЛЬТА: Передаємо час, щоб сервер знав, де ми зупинилися
         function claimRemote() { 
             socket.emit('claim_remote', { time: video.currentTime }); 
         }
@@ -251,25 +249,51 @@
                 alert("⛔ Тільки власник пульта може міняти відео!");
                 return;
             }
+
+            // Форматування посилань з хмарних сховищ
             if (url.includes('dropbox.com')) url = url.replace('dl=0', 'dl=1');
             if (url.includes('drive.google.com') && url.includes('/d/')) {
                 const id = url.match(/\/d\/(.+?)\//);
                 if(id) url = `https://drive.google.com/uc?export=download&id=${id[1]}`;
             }
+
+            // ПОВНЕ ОЧИЩЕННЯ ПЛЕЄРА ПЕРЕД НОВИМ ПОСИЛАННЯМ
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            video.pause();
+            video.removeAttribute('src');
+            video.load();
+
             if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
-                    if(hls) hls.destroy(); hls = new Hls(hlsConfig);
-                    hls.loadSource(url); hls.attachMedia(video);
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) { video.src = url; }
-            } else { video.src = url; }
+                    hls = new Hls(hlsConfig);
+                    hls.loadSource(url);
+                    hls.attachMedia(video);
+                    hls.on(Hls.Events.ERROR, function (event, data) {
+                        if (data.fatal) {
+                            console.error("HLS Fatal Error:", data);
+                            alert("⚠️ Помилка завантаження HLS-потоку (.m3u8). Можливо заблоковано CORS.");
+                        }
+                    });
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) { 
+                    video.src = url; 
+                }
+            } else { 
+                video.src = url; 
+            }
+
             if (!urlFromSocket) socket.emit('change_video', url);
         }
 
         socket.on('connect', () => socket.emit('join_room', { roomId, userName: myName }));
+        
         socket.on('update_user_list', (users) => {
             document.getElementById('userCount').innerText = `Онлайн: ${users.length}`;
             document.getElementById('userList').innerHTML = users.map(u => `<span class="user-tag">● ${u}</span>`).join('');
         });
+
         socket.on('initial_state', (data) => {
             if (data.messages) data.messages.forEach(msg => displayMessage(msg));
             if (data.leaderId) { currentLeaderId = data.leaderId; updateRemoteUI(); }
@@ -283,6 +307,7 @@
                 });
             }
         });
+
         socket.on('update_video_url', (url) => changeVideo(url));
 
         function sendSync(action) {
@@ -297,12 +322,14 @@
             if (socket.id !== currentLeaderId) { isProtecting = true; video.pause(); return; }
             sendSync('play');
         };
+
         video.onpause = () => {
             if (isSyncing) return;
             if (isProtecting) { isProtecting = false; return; }
             if (socket.id !== currentLeaderId) { isProtecting = true; video.play(); return; }
             sendSync('pause');
         };
+
         video.onseeking = () => { 
             if (isSyncing) return;
             if (socket.id !== currentLeaderId) {
@@ -310,6 +337,7 @@
                 if (diff > 2) { video.currentTime = lastKnownTime; return; }
             }
         };
+
         video.onseeked = () => { if (socket.id === currentLeaderId) sendSync('seek'); };
 
         socket.on('receive_sync', (data) => {
@@ -320,6 +348,7 @@
             else if (data.action === 'seek') { if (data.paused) video.pause(); else video.play(); }
             setTimeout(() => { isSyncing = false; }, 400);
         });
+
         setInterval(() => { if (!video.paused) lastKnownTime = video.currentTime; }, 1000);
 
         function sendMessage() {
@@ -329,11 +358,14 @@
                 input.value = "";
             }
         }
+
         function sendSticker(url) {
             socket.emit('send_message', { user: myName, sticker: url, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
             toggleStickers();
         }
+
         socket.on('receive_message', (data) => displayMessage(data));
+
         function displayMessage(data) {
             const div = document.createElement('div');
             div.className = 'msg';
@@ -353,15 +385,10 @@
         function toggleStickers() { const p = document.getElementById('stickerPanel'); p.style.display = (p.style.display === 'grid') ? 'none' : 'grid'; }
         function copyLink() { navigator.clipboard.writeText(window.location.href); alert("Скопійовано!"); }
         function createNewRoom() { if(confirm("Створити нову кімнату?")) window.location.search = '?room=room-' + Math.floor(Math.random() * 9999); }
-    
-       
-               // --- ФУНКЦІЯ ДЛЯ ВІКНА ДОПОМОГИ ---
         function toggleHelp() {
             const el = document.getElementById('helpModal');
-            // Якщо вікно відкрите - закриваємо, якщо закрите - відкриваємо
             el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
         }
-
-       </script>
+    </script>
 </body>
 </html>
