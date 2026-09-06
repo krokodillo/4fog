@@ -157,7 +157,6 @@
         
         <div id="chat-container">
             <div id="messages"></div>
-            <!-- Стікери тепер генеруються через JS знизу, без document.write -->
             <div id="stickerPanel" class="sticker-panel"></div>
             <div class="input-area">
                 <button class="btn-sticker" onclick="toggleStickers()">😊</button>
@@ -189,7 +188,6 @@
         let currentLeaderId = null;
         let lastKnownTime = 0;
 
-        // Генерація стікерів (Безпечний метод)
         const stickerPanel = document.getElementById('stickerPanel');
         let stickersHtml = '';
         for(let i = 1; i <= 23; i++) {
@@ -229,44 +227,25 @@
             window.location.reload();
         });
 
-      function changeVideo(urlFromSocket = null) {
-    let url = urlFromSocket || document.getElementById('videoUrl').value.trim();
-    if (!url) return;
-    
-    if (!urlFromSocket && socket.id !== currentLeaderId) {
-        alert("⛔ Тільки власник пульта може міняти відео!");
-        return;
-    }
+        function changeVideo(urlFromSocket = null) {
+            let url = urlFromSocket || document.getElementById('videoUrl').value.trim();
+            if (!url) return;
+            
+            if (!urlFromSocket && socket.id !== currentLeaderId) {
+                alert("⛔ Тільки власник пульта може міняти відео!");
+                return;
+            }
 
-    // ВИПРАВЛЕННЯ: Оновлюємо текстове поле для інших глядачів
-    if (urlFromSocket) {
-        document.getElementById('videoUrl').value = url;
-    }
-    
-    if (url.includes('dropbox.com')) url = url.replace('dl=0', 'raw=1').replace('dl=1', 'raw=1');
-    if (url.includes('drive.google.com') && url.includes('/d/')) {
-        const id = url.match(/\/d\/(.+?)\//);
-        if(id) url = `https://drive.google.com/uc?export=download&id=${id[1]}`;
-    }
+            if (urlFromSocket) {
+                document.getElementById('videoUrl').value = url;
+            }
+            
+            if (url.includes('dropbox.com')) url = url.replace('dl=0', 'raw=1').replace('dl=1', 'raw=1');
+            if (url.includes('drive.google.com') && url.includes('/d/')) {
+                const id = url.match(/\/d\/(.+?)\//);
+                if(id) url = `https://drive.google.com/uc?export=download&id=${id[1]}`;
+            }
 
-    if (url.includes('.m3u8')) {
-        if (Hls.isSupported()) {
-            if(hls) hls.destroy(); 
-            hls = new Hls(hlsConfig);
-            hls.loadSource(url); 
-            hls.attachMedia(video);
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) { 
-            video.src = url; 
-        }
-    } else { 
-        video.src = url; 
-        video.load(); 
-    }
-    
-    if (!urlFromSocket) socket.emit('change_video', url);
-}
-
-            // Логіка визначення формату
             if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
                     if(hls) hls.destroy(); 
@@ -284,9 +263,8 @@
                     video.src = url; 
                 }
             } else { 
-                // Для звичайних MP4
                 video.src = url; 
-                video.load(); // ВАЖЛИВО: Змушує плеєр завантажити новий MP4 файл
+                video.load(); 
             }
             
             if (!urlFromSocket) socket.emit('change_video', url);
@@ -327,7 +305,7 @@
             if (socket.id !== currentLeaderId) { 
                 isProtecting = true; 
                 video.pause(); 
-                alert("⛔ Спочатку візьміть пульт, щоб керувати відео!"); // Додано підказку
+                alert("⛔ Спочатку візьміть пульт, щоб керувати відео!"); 
                 return; 
             }
             sendSync('play');
